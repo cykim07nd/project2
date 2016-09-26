@@ -358,7 +358,7 @@ int write (int fd, const void *buffer, unsigned size){
 	{
 		lock_acquire(&lock);
 		char *buff = buffer;
-		putbuf("hey", size); 
+		putbuf(buffer, size); 
 		lock_release(&lock);
 		/*lock_acquire(&lock);
 		if(size > 500)

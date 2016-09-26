@@ -89,6 +89,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  while(1){};
   return -1;
 }
 
@@ -468,6 +469,7 @@ install_page (void *upage, void *kpage, bool writable)
 
 int* tokenize (const char *file_name, void *esp) {
   int place = 0;
+  int padding = 0;
   int length = 0;
   int size = 0;
   int arguments = 0;
@@ -499,7 +501,14 @@ int* tokenize (const char *file_name, void *esp) {
       }
     }
   }
-  *charPoint = 0;           /* setting int_8 = 0; */
+  padding = 4 - ((length +1) % 4);
+  if (padding != 4) {
+    for(int i = 0; i < padding ; i ++) {
+      *charPoint = 0;
+      charPoint--;
+    }
+    charPoint++;
+  }
   intPoint = (int*) charPoint;    
   intPoint--;
   *intPoint = 0;            /* setting 0 for arg[number of args]*/
