@@ -20,6 +20,7 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+int* tokenize (const char *file_name, void *esp);
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -305,6 +306,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   if (!setup_stack (esp))
     goto done;
 
+  *esp = tokenize(file_name, *esp);
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
@@ -462,4 +464,59 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+int* tokenize (const char *file_name, void *esp) {
+  int place = 0;
+  int length = 0;
+  int size = 0;
+  int arguments = 0;
+  int* intPoint;
+  while(file_name[size] != 0) { /*get size of the file_name*/
+    size++;
+  }
+  place = size-1;
+  while(file_name[place] == ' ') {  /*get the last letter of file_name*/
+    place--;    
+  }
+
+  char * charPoint = (char *) esp;
+  charPoint--;
+  *charPoint = 0;           /*set null for highest stack*/
+  charPoint--;
+  while(place >= 0) {         /*put the string into stack from the last letter*/
+    if(file_name[place] != ' ') {   /* if its not a space, put on stack*/
+      *charPoint = file_name[place];  
+      charPoint--;
+      place--;
+      length++;
+    } else {            /* if it is a space, put null on stack, move pointer and increment place till a character is found.*/
+      *charPoint = 0;
+      charPoint--;
+      length++;
+      while(place >=0 && file_name[place] == ' ') {
+        place--;
+      }
+    }
+  }
+  *charPoint = 0;           /* setting int_8 = 0; */
+  intPoint = (int*) charPoint;    
+  intPoint--;
+  *intPoint = 0;            /* setting 0 for arg[number of args]*/
+  intPoint--;
+  charPoint = (char *) esp;
+  charPoint -= 2;
+  for(int i = 0; i <= length; i++) {  /*read from bottom of stack to put pointers and find number of arguments*/
+    if(*(charPoint - i) == 0) {
+      *intPoint = (int *) (charPoint - i + 1);
+      intPoint--;
+      arguments++;
+    }
+  }
+  *intPoint = (intPoint+1);     /*put the pointer to the pointer to arguments*/
+  intPoint--;
+  *intPoint = arguments;        /*input number of args*/
+  intPoint--;
+  *intPoint = 0;            /*return address*/
+  return intPoint;
 }

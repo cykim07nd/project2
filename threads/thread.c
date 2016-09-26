@@ -98,6 +98,9 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+
+  initial_thread->fileDirectory = NULL;
+  initial_thread->nextfdnum = 3;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -285,6 +288,14 @@ thread_exit (void)
 #ifdef USERPROG
   process_exit ();
 #endif
+
+  /*Deallocate file list if one exists for the thread*/ //TODO:inserted new code
+  /*struct thread *t = thread_current();
+  struct list* fileList = t->fileDirectory;
+  if(fileList !=NULL)
+  {
+	  free(fileList);
+  }*/
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
