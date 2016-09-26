@@ -42,16 +42,17 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  /*fname = strdup(file_name);
+  fname = malloc(strlen(file_name) + 1);
+  memcpy(fname, file_name, strlen(file_name)+1);
   fptr = fname;
   while(*fptr != ' ')
   {
 	fptr++;
   }
-  *fptr = 0;*/
+  *fptr = '\0';
  
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (fname, PRI_DEFAULT, start_process, fn_copy);
   free(fname);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
@@ -65,7 +66,11 @@ process_execute (const char *file_name)
 static void
 start_process (void *file_name_)
 {
+  
+    
+
   char *file_name = file_name_;
+  
   struct intr_frame if_;
   bool success;
 
@@ -75,7 +80,7 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
-
+  //free(fname);
   /* If load failed, quit. */
   palloc_free_page (file_name);
   //init child table
@@ -130,7 +135,7 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
+  printf ("%s: exit(%d)\n", thread_current()->name, thread_current()->status);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -248,6 +253,18 @@ load (const char *file_name, void (**eip) (void), void **esp)
   bool success = false;
   int i;
 
+  char* fname; 
+  char* fptr;
+  fname = malloc(strlen(file_name) + 1);
+  memcpy(fname, file_name, strlen(file_name)+1);
+  fptr = fname;
+  while(*fptr != ' ')
+  {
+	fptr++;
+  }
+  *fptr = '\0';
+
+
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -255,10 +272,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
-  file = filesys_open (file_name);
+  file = filesys_open (fname);
   if (file == NULL) 
     {
-      printf ("load: %s: open failed\n", file_name);
+      printf ("load: %s: open failed\n", fname);
       goto done; 
     }
 
@@ -271,7 +288,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       || ehdr.e_phentsize != sizeof (struct Elf32_Phdr)
       || ehdr.e_phnum > 1024) 
     {
-      printf ("load: %s: error loading executable\n", file_name);
+      printf ("load: %s: error loading executable\n", fname);
       goto done; 
     }
 
@@ -341,7 +358,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   *esp = tokenize(file_name, *esp);
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
-
+  free(fname);
   success = true;
 
  done:

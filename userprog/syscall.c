@@ -206,6 +206,9 @@ void halt(void) {
 void exit (int status) {
   /*Terminates the current user program, returning status to the kernel. If the process’s parent waits for it(see below), this is the status that will be returned. Conventionally, a status of 0 indicates success and nonzero values indicate errors. */
   notifyParent(status);
+thread_current()->status = status;
+
+
   thread_exit();
 }
 
