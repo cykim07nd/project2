@@ -31,6 +31,9 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
+  char* fname; 
+  char* fptr;
+  
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -39,10 +42,21 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  /*fname = strdup(file_name);
+  fptr = fname;
+  while(*fptr != ' ')
+  {
+	fptr++;
+  }
+  *fptr = 0;*/
+ 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  free(fname);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+  //add tid to child proc table
+  addChildProcess(tid);
   return tid;
 }
 
@@ -64,9 +78,15 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
+  //init child table
+  //list_init(&t->children);
 
+  if (!success) 
+  {
+    notifyParent(-1);
+    thread_exit ();
+  }
+  notifyParent(0);
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -89,8 +109,19 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  while(1){};
-  return -1;
+  //while(1){};
+  //return -1;
+  //check if child_tid is indeed a child of current process
+  struct thread* t = thread_current();
+  struct child* myChild = getChild(t, child_tid);
+  if(myChild == NULL)
+  {
+	return -1;
+  }
+  //sema_down
+  sema_down(&myChild->sema_status);
+  
+  return myChild->status;
 }
 
 /* Free the current process's resources. */
@@ -529,3 +560,34 @@ int* tokenize (const char *file_name, void *esp) {
   *intPoint = 0;            /*return address*/
   return intPoint;
 }
+
+struct child* getChild(struct thread* t, tid_t child_tid){
+	if(t == NULL || child_tid < 0)
+	{
+		return NULL;
+	}
+	struct list children = t->children;
+	struct list_elem* c;
+	for (c = list_begin (&children); c != list_end (&children); c = list_next (c))
+	{
+		struct child *ch = list_entry(c, struct child, elem);
+		if(ch->tid == child_tid)
+		{
+			return ch;
+		}
+	}
+	return NULL;
+}
+
+void addChildProcess(tid_t child_tid){
+	struct thread *t = thread_current();
+	struct child* newChild = malloc(sizeof(struct child));
+	if(newChild == NULL)
+	{
+		return;//TID_ERROR?
+	}
+	newChild->tid = child_tid;
+	sema_init(&newChild->sema_status, 0);
+	list_push_back (&t->children, &newChild->elem);
+}
+

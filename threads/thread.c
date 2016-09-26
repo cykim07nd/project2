@@ -101,6 +101,8 @@ thread_init (void)
 
   initial_thread->fileDirectory = NULL;
   initial_thread->nextfdnum = 3;
+
+  list_init(&initial_thread->children);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -185,6 +187,9 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+
+  t->parent = thread_current()->tid;
+  list_init(&t->children);
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -593,3 +598,47 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+//may need a magic2 to discern user process from kernel thread
+void notifyParent(int status){
+	struct thread *t = thread_current();
+	tid_t tid = t->tid;
+	tid_t parent = t->parent;
+	if(parent < 0) 
+	{
+		return;
+	}
+	struct list_elem* e;
+	for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e))
+	{
+		struct thread *tempt = list_entry (e, struct thread, allelem);
+		if(tempt->tid == parent)
+		{
+			struct list children = tempt->children;
+			struct list_elem* c;
+			for (c = list_begin (&children); c != list_end (&children); c = list_next (c))
+			{
+				struct child *ch = list_entry (c,struct child, elem);
+				if(ch->tid == tid)
+				{
+					ch->status = status;//should this be in critical section? Could notify parent on exit or status change
+					sema_up(&ch->sema_status);
+					return;
+				}
+			}
+		}
+	}
+}
+
+struct thread* getProcess(tid_t tid) {
+   	struct list_elem* e;
+	for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e))
+	{
+		struct thread *t = list_entry (e, struct thread, allelem);
+	        if(tid == t->tid)
+		{
+			return t;
+		}
+	}
+	return NULL;
+}

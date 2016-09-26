@@ -205,13 +205,13 @@ void halt(void) {
 
 void exit (int status) {
   /*Terminates the current user program, returning status to the kernel. If the process’s parent waits for it(see below), this is the status that will be returned. Conventionally, a status of 0 indicates success and nonzero values indicate errors. */
-  //notifyParent(status);
+  notifyParent(status);
   thread_exit();
 }
 
 tid_t exec (const char *cmd_line) {
   /*Runs the executable whose name is given in cmd line, passing any given arguments, and returns the new process’s program id (pid). Must return pid -1, which otherwise should not be a valid pid, if the program cannot load or run for any reason. Thus, the parent process cannot return from the exec until it knows whether the child process successfully loaded its executable. You must use appropriate synchronization to ensure this. */
-	/*char* cmd_ptr = get_user_string((uint8_t*)cmd_line);
+	char* cmd_ptr = get_user_string((uint8_t*)cmd_line);
 	printf(cmd_line);
 	lock_acquire(&filesys_lock);
 	tid_t child_tid = process_execute(cmd_ptr);
@@ -221,7 +221,7 @@ tid_t exec (const char *cmd_line) {
 		return TID_ERROR;
 	}
 	addChildProcess(child_tid);
-	return child_tid;*/
+	return child_tid;
 	//return TID_ERROR;
 }
 
